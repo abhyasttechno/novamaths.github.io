@@ -823,10 +823,7 @@
              padding: 8px 20px;
              font-weight: 600;
         }
-        #conceptsRefresherAlert {
-            /* Style for alerts within this section */
-        }
-
+   
 
         /* --- NEW: Refresher Modal Styles --- */
          #refresherModal .modal-title {
@@ -868,6 +865,74 @@
              margin-top: 15px;
         }
 
+       /* Feedback Section Styling (Keep your existing styling for the section/card) */
+    #feedback-section {
+         padding: 60px 0;
+         margin-bottom: 40px;
+         background-color: #eef2f6; /* Optional: Give it a background like other sections */
+    }
+     #feedback-section .card {
+         background-color: #ffffff;
+         border: 1px solid #e9ecef;
+         border-radius: 0.5rem;
+     }
+     #feedback-section h2 {
+         text-align: center;
+         color: #1a2b4a;
+         font-size: 2.5rem;
+         margin-bottom: 20px;
+     }
+
+    /* Star Rating CSS - MODIFIED to add star characters */
+    .rating {
+      display: inline-block;
+      direction: rtl; /* Reverse direction for positioning */
+      unicode-bidi: bidi-override; /* Ensure proper handling */
+      /* Remove float from container */
+    }
+    .rating input {
+      display: none; /* Hide the default radio buttons */
+    }
+    .rating label {
+      /* float: right; <-- Remove float from label */
+      font-size: 2rem; /* Size of the area */
+      color: transparent; /* Make the label text/background transparent */
+      padding: 0 3px; /* Spacing between stars */
+      cursor: pointer;
+      /* No transition here, transition will be on the pseudo-element color */
+    }
+
+    /* Use pseudo-element to display the star character */
+    .rating label::before {
+        content: '\2605'; /* Unicode character for a solid star */
+        color: #ccc; /* Default grey color for stars */
+        transition: color 0.2s ease; /* Smooth color transition on hover/selection */
+    }
+
+    /* Styles for hover and checked states */
+    .rating label:hover::before,          /* Highlight the hovered star */
+    .rating label:hover ~ label::before,  /* Highlight stars to the left of the hovered star */
+    .rating input:checked ~ label::before /* Highlight the selected star and stars to its left */
+    {
+      color: #ffc107; /* Yellow/Gold color */
+    }
+
+    /* Specific styling for the Rating error message using Bootstrap validation states */
+    /* Target the specific invalid feedback for the rating group */
+     #feedbackForm.was-validated .rating:has(input:invalid) + #ratingError {
+         display: block; /* Show the error message */
+     }
+     #feedbackForm .rating:has(input:checked) + #ratingError {
+         display: none !important; /* Hide error once a rating is selected */
+     }
+
+     /* Ensure standard Bootstrap invalid feedback is shown */
+     #feedbackForm.was-validated .form-control:invalid {
+          border-color: var(--bs-form-invalid-border-color);
+     }
+     #feedbackForm.was-validated .form-control:invalid ~ .invalid-feedback {
+          display: block;
+     }
     </style>
 </head>
 <body>
@@ -918,7 +983,7 @@
         <section id="solver-section" class="mb-5">
             <div class="row justify-content-center">
                 <div class="col-md-10 col-lg-9">
-                    <h2 class="text-center mb-4">Your Problem, Solved.</h2>
+                    <h2 class="text-center mb-4">No Problem’s Too Tough – Show Us Yours!</h2>
                     <div class="card shadow-sm"> <!-- Added shadow-sm -->
                         <div class="card-body p-0">
                             <!-- MODIFIED: Unified Input Bar Structure -->
@@ -1055,6 +1120,54 @@
 
     </div> <!-- End Container -->
 
+
+    <section id="feedback-section" class="mb-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-7">
+                    <h2 class="text-center mb-4">Give Us Your Feedback</h2>
+                    <div class="card shadow-sm p-4">
+                        <div class="card-body">
+                            <p class="text-muted text-center mb-4">Help us improve Nova Maths by sharing your experience.</p>
+                            <form id="feedbackForm" novalidate>
+                                <div class="mb-4 text-center">
+                                    <label for="starRating" class="form-label d-block mb-2">Your Rating <span class="text-danger">*</span></label>
+                                    <div class="rating">
+                                        <!-- Stars are ordered 5 down to 1 in the HTML -->
+                                        <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="5 stars"></label>
+                                        <input type="radio" id="star4" name="rating" value="4" required /><label for="star4" title="4 stars"></label>
+                                        <input type="radio" id="star3" name="rating" value="3" required /><label for="star3" title="3 stars"></label>
+                                        <input type="radio" id="star2" name="rating" value="2" required /><label for="star2" title="2 stars"></label>
+                                        <input type="radio" id="star1" name="rating" value="1" required /><label for="star1" title="1 star"></label>
+                                    </div>
+                                    <div class="invalid-feedback" id="ratingError">Please select a star rating.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="feedbackEmail" class="form-label">Your Email Address <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="feedbackEmail" required placeholder="name@example.com">
+                                     <div class="invalid-feedback">Please provide a valid email address.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="feedbackText" class="form-label">Detailed Feedback (Optional)</label>
+                                    <textarea class="form-control" id="feedbackText" rows="4" placeholder="Share your thoughts..."></textarea>
+                                </div>
+
+                                <div id="feedbackAlertBox" class="mb-3"></div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" id="submitFeedbackButton" class="btn btn-primary btn-lg">
+                                         <span class="spinner-border spinner-border-sm me-2 loading-spinner" role="status" aria-hidden="true"></span>
+                                         <span class="button-text-content">Submit Feedback</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
     <!-- Footer -->
     <footer class="footer">
@@ -1248,13 +1361,15 @@
         const refresherLoadingSpinner = document.getElementById('refresherLoadingSpinner');
         const refresherError = document.getElementById('refresherError');
         // --- API Endpoints ---
-        const API_BASE_URL = 'https://novamaths-api-edfd27612b5d.herokuapp.com/'; // Adjust if needed
+        const API_BASE_URL = 'https://novamaths-api-edfd27612b5d.herokuapp.com'; // Adjust if needed
+        //const API_BASE_URL = 'http://127.0.0.1:8080';
         const SOLVE_API_ENDPOINT = `${API_BASE_URL}/solve-math`;
         const CLARIFY_API_ENDPOINT = `${API_BASE_URL}/clarify-step`;
         const PRACTICE_API_ENDPOINT = `${API_BASE_URL}/practice`;
         const AMA_API_ENDPOINT = `${API_BASE_URL}/ama`; // AMA Endpoint
         const CHECK_API_ENDPOINT= `${API_BASE_URL}/check`;
         const REFRESHER_API_ENDPOINT= `${API_BASE_URL}/refresher`; // Your new backend endpoint
+        const FEEDBACK_API_ENDPOINT = `${API_BASE_URL}/submit-feedback`;
         // --- DOM Elements ---
         const mathProblemText = document.getElementById('mathProblemText');
         const mathProblemFile = document.getElementById('mathProblemFile');
@@ -1289,7 +1404,13 @@
         const sendButton = document.getElementById('send-button');
         const chatWindow = document.getElementById('chat-window');
 
-
+// --- NEW: Feedback DOM Elements (add these references) ---
+        const feedbackForm = document.getElementById('feedbackForm');
+        const feedbackEmail = document.getElementById('feedbackEmail');
+        const feedbackText = document.getElementById('feedbackText');
+        const submitFeedbackButton = document.getElementById('submitFeedbackButton');
+        const feedbackAlertBox = document.getElementById('feedbackAlertBox');
+        const ratingError = document.getElementById('ratingError'); // Added rating error element 
         // --- Global Variables to Store Context ---
         let currentProblemText = ''; // Stores text used for the LAST successful solution
         let currentProblemFileURI = null; // Stores file URI from LAST successful solution
@@ -1306,6 +1427,18 @@
 const startSpeechButton = document.getElementById('startSpeechButton'); // <--- NEW LINE
 let isRecording = false; // <--- NEW LINE
 let recognition = null; // Variable to hold SpeechRecognition object // <--- NEW LINE
+
+
+function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') return '';
+            return unsafe
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, '"')
+                .replace(/'/g, "'");
+        }
+
 
 function showButtonLoading(button, loadingText = 'Processing...') {
      button.disabled = true;
@@ -1342,6 +1475,148 @@ function hideButtonLoading(button) {
      }
 }
 
+function showFeedbackAlert(message, type = 'danger') {
+             // Check if the feedbackAlertBox element exists
+             if (!feedbackAlertBox) {
+                 console.warn("Feedback alert container (feedbackAlertBox) not found.");
+                 // Optional: fall back to main alert or just log error
+                 // if (alertBox) showAlert(message, type, alertBox);
+                 return;
+             }
+             feedbackAlertBox.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${escapeHtml(message)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`;
+        }
+
+        function clearFeedbackAlert() {
+             // Check if the feedbackAlertBox element exists
+             if (feedbackAlertBox) {
+                 feedbackAlertBox.innerHTML = '';
+             }
+        }
+
+        function showFeedbackButtonLoading(loadingText = 'Submitting...') {
+              // Check if the submitFeedbackButton element exists
+              if (submitFeedbackButton) {
+                 // Call the general helper function
+                 showButtonLoading(submitFeedbackButton, loadingText);
+              } else {
+                   console.warn("Feedback submit button (submitFeedbackButton) not found.");
+              }
+         }
+
+         function hideFeedbackButtonLoading() {
+              // Check if the submitFeedbackButton element exists
+              if (submitFeedbackButton) {
+                 // Call the general helper function
+                 hideButtonLoading(submitFeedbackButton);
+              } else {
+                   console.warn("Feedback submit button (submitFeedbackButton) not found for hiding loading.");
+              }
+         }
+
+         // --- NEW: Feedback Form Submit Listener (sends to your backend API) ---
+        // Add the event listener only if the feedbackForm element exists
+        if (feedbackForm) {
+            feedbackForm.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent default form submission
+                clearFeedbackAlert(); // Clear previous alerts
+
+                // Add Bootstrap validation classes to trigger built-in validation feedback
+                 feedbackForm.classList.add('was-validated');
+
+                 // Check form validity using browser's built-in check (handles 'required' for email and radio group)
+                 // Also checks email format validation.
+                 if (!feedbackForm.checkValidity()) {
+                     event.stopPropagation(); // Stop propagation if form is invalid
+                     // The browser/Bootstrap validation will visually highlight the invalid fields.
+                     // Our CSS handles the rating error visibility based on .was-validated and :has(input:invalid)
+                     // showFeedbackAlert('Please fill in all required fields correctly.', 'warning'); // Optional: show a generic alert too
+                     return; // Stop execution if form is invalid
+                 }
+
+                 // If form is valid according to browser's check, we can proceed.
+                 // The CSS should take care of hiding the rating error if a radio is checked.
+                 // We can also explicitly hide it here for certainty, though CSS should handle it.
+                 if (ratingError) { // Check if element exists
+                    ratingError.classList.remove('d-block', 'text-danger');
+                    ratingError.classList.add('d-none');
+                 }
+
+
+                // Get selected rating - should be checked because checkValidity() passed
+                const selectedRatingInput = feedbackForm.querySelector('input[name="rating"]:checked');
+                const rating = selectedRatingInput ? selectedRatingInput.value : null; // Should NOT be null here if checkValidity passed
+
+                const email = feedbackEmail ? feedbackEmail.value.trim() : ''; // Check if element exists
+                const feedback = feedbackText ? feedbackText.value.trim() : ''; // Check if element exists
+
+
+                // Data payload to send to the backend
+                const payload = {
+                    rating: rating !== null ? parseInt(rating, 10) : null, // Convert rating to a number if not null
+                    email: email,
+                    feedback: feedback // Will be empty string if textarea was empty
+                };
+
+                showFeedbackButtonLoading(); // Show loading state on the button
+
+                try {
+                    const response = await fetch(FEEDBACK_API_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // You might need other headers depending on your backend authentication/CORS setup
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                     // Read response as text first to catch non-JSON errors
+                     const responseText = await response.text();
+                     let responseData = null;
+                     try {
+                          // Try parsing JSON if response has content (even if !response.ok, it might be a JSON error payload)
+                          if (responseText) {
+                             responseData = JSON.parse(responseText);
+                          }
+                     } catch (jsonError) {
+                           // Ignore JSON parsing error if responseText was not valid JSON
+                           console.warn("Failed to parse response as JSON:", jsonError);
+                           // responseData remains null
+                     }
+
+
+                    if (!response.ok) {
+                        // Handle non-OK HTTP status
+                        const errorDetail = responseData && (responseData.error || responseData.message) ? (responseData.error || responseData.message) : responseText.substring(0, 200) || `HTTP Status: ${response.status}`;
+                        console.error("Backend Feedback Error Response:", responseData || responseText);
+                        throw new Error(`Server error: ${errorDetail}`);
+                    }
+
+                    // Assuming success if response.ok is true
+                    // Your backend should ideally return a success message in the JSON response
+                    const successMessage = responseData && responseData.message ? responseData.message : 'Thank you for your feedback!';
+                    showFeedbackAlert(successMessage, 'success');
+
+                    // Clear the form after successful submission
+                    feedbackForm.reset();
+                     feedbackForm.classList.remove('was-validated'); // Reset validation state
+                    // Explicitly hide the rating error message visually if needed after reset
+                     if (ratingError) {
+                         ratingError.classList.remove('d-block');
+                         ratingError.classList.add('d-none');
+                     }
+
+
+                } catch (error) {
+                    console.error('Error submitting feedback:', error);
+                     showFeedbackAlert(`Failed to submit feedback: ${error.message.includes('Failed to fetch') ? 'Network error or backend unavailable.' : escapeHtml(error.message)}`, 'danger');
+                } finally {
+                    hideFeedbackButtonLoading(); // Hide loading state on the button
+                }
+            });
+        }
         function showAlert(message, type = 'danger', container = alertBox) {
              if (!container) return;
              container.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
