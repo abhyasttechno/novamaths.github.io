@@ -1332,8 +1332,8 @@
         const refresherError = document.getElementById('refresherError');
 
         // --- API Endpoints ---
-        const API_BASE_URL = 'https://novamaths-api-edfd27612b5d.herokuapp.com';
-        // const API_BASE_URL = 'http://127.0.0.1:8080';
+        // const API_BASE_URL = 'https://novamaths-api-edfd27612b5d.herokuapp.com';
+        const API_BASE_URL = 'http://127.0.0.1:8080';
         const SOLVE_API_ENDPOINT = `${API_BASE_URL}/solve-math`;
         const CLARIFY_API_ENDPOINT = `${API_BASE_URL}/clarify-step`;
         const PRACTICE_API_ENDPOINT = `${API_BASE_URL}/practice`;
@@ -1467,7 +1467,6 @@ function simpleMarkdownToHtml(markdownText) {
             // This is a bit complex to do perfectly with regex. A full parser is better.
             // For now, let's apply it broadly and clean up after.
             // The list regex above already extracts the item text. We should apply inline there.
-            // Let's refine the list processing slightly to include inline processing
             
             // Re-do list processing with inline included
             html = markdownText; // Reset html to original for this pass
@@ -1753,6 +1752,11 @@ function simpleMarkdownToHtml(markdownText) {
 
         if (solveUnifiedButton) {
             solveUnifiedButton.addEventListener('click', async () => {
+                // Store the current radio selection
+                let selectedStepMode = 'all';
+                if (displayOneByOneRadio && displayOneByOneRadio.checked) selectedStepMode = 'one-by-one';
+                else if (displayAllStepsRadio && displayAllStepsRadio.checked) selectedStepMode = 'all';
+
                 clearAlert();
                 if(practiceProblemsSectionCard) practiceProblemsSectionCard.style.display = 'none';
                 if(practiceOutput) practiceOutput.innerHTML = '<p class="text-muted">Click \'Generate\' after getting a solution.</p>';
@@ -1779,7 +1783,8 @@ function simpleMarkdownToHtml(markdownText) {
                 currentProblemText = ''; currentProblemFileURI = null; currentSolutionText = '';
                 currentSolutionStepsArray = []; currentStepIndex = 0;
                 if (nextStepButton) nextStepButton.style.display = 'none';
-                if (displayAllStepsRadio) displayAllStepsRadio.checked = true;
+                // Remove the line that always checks displayAllStepsRadio
+                // if (displayAllStepsRadio) displayAllStepsRadio.checked = true;
 
                 const formData = new FormData();
                 if (problemTextValue) formData.append('problemText', problemTextValue);
@@ -1795,12 +1800,6 @@ function simpleMarkdownToHtml(markdownText) {
 
                     if (!response.ok) {
                         if (responseData?.error) {
-                            showAlert(`Failed: ${escapeHtml(responseData.error)}`);
-                            if (responseData.preemptiveScaffolding?.length > 0) {
-                                if(scaffoldingList) scaffoldingList.innerHTML = responseData.preemptiveScaffolding.map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
-                                if(preemptiveScaffoldingDiv) preemptiveScaffoldingDiv.style.display = 'block';
-                                renderMathJax(preemptiveScaffoldingDiv);
-                            }
                            if (solutionOutput) solutionOutput.innerHTML = `<p class="text-danger">${escapeHtml(responseData.error)}</p>`;
                         } else { throw new Error(responseData?.message || `HTTP error! Status: ${response.status}`); }
                         return; // Stop further processing on error
@@ -1818,17 +1817,17 @@ function simpleMarkdownToHtml(markdownText) {
 
                     if (responseData.solution) {
                        displaySolution(responseData.solution, problemTextValue, responseData.identifiedConcepts, responseData.file_uri);
-                        if(mathProblemText) mathProblemText.value = '';
-                        // Clear file input, but keep lastUploadedImageSrc for displaySolution
-                        if (mathProblemFile) mathProblemFile.value = ''; 
-                        if (selectedFileInfo) selectedFileInfo.innerHTML = '';
-
                         if(mathProblemText) { mathProblemText.style.height = 'auto'; mathProblemText.dispatchEvent(new Event('input'));}
+                        // Restore the previously selected radio button and render steps accordingly
+                        if (selectedStepMode === 'one-by-one' && displayOneByOneRadio) {
+                            displayOneByOneRadio.checked = true;
+                            renderSolutionSteps('one-by-one');
+                        } else if (displayAllStepsRadio) {
+                            displayAllStepsRadio.checked = true;
+                            renderSolutionSteps('all');
+                        }
                     } else {
                         // If no solution but there was preemptive scaffolding, don't throw error, just inform.
-                         if (!responseData.preemptiveScaffolding || responseData.preemptiveScaffolding.length === 0) {
-                            throw new Error("Solution missing in the server response.");
-                         }
                         if(solutionOutput) solutionOutput.innerHTML = '<p class="text-warning">Tips provided based on input. No full solution generated.</p>';
 
                     }
