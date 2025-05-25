@@ -383,7 +383,7 @@
           margin-bottom: 0.5rem;
         }
         #solutionOutput .step-content, #solutionOutput .final-answer-content {
-             white-space: normal; /* from index.html, good for MathJax compatibility */
+             white-space: pre-wrap; /* MODIFIED: Was 'normal'. This preserves newlines and spaces from AI output. */
              font-family: var(--nm-font-body); /* dashboard.html font */
              line-height: 1.7;
              color: var(--nm-text-dark);
@@ -1419,8 +1419,7 @@ function simpleMarkdownToHtml(markdownText) {
 
             // --- Block level elements ---
 
-            // Headings ( musí být před paragrafy/newlines)
-            // Process from smaller heading to larger if simple replace, or ensure regex matches start of line
+            // Headings (must be before paragraphs/newlines)
             html = html.replace(/^#### (.*$)/gim, '<h6>$1</h6>');
             html = html.replace(/^### (.*$)/gim, '<h5>$1</h5>');
             html = html.replace(/^## (.*$)/gim, '<h4>$1</h4>');
@@ -1429,32 +1428,12 @@ function simpleMarkdownToHtml(markdownText) {
             // Horizontal Rules (---, ***, ___)
             html = html.replace(/^\s*([-*_]){3,}\s*$/gm, '<hr>');
 
-            // Lists (simplified handling for non-nested lists)
-            // Unordered lists
-            html = html.replace(/^\s*[\*\-\+]\s+(.*)/gm, '<li>$1</li>'); // Convert items to <li>
-            html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');    // Wrap groups of <li> in <ul>
-
-            // Numbered lists
-            html = html.replace(/^\s*\d+\.\s+(.*)/gm, '<li>$1</li>');    // Convert items to <li>
-            html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ol>$&</ol>');     // Wrap groups of <li> in <ol>
-            
-            // Fix for lists: if <ul> or <ol> was accidentally wrapped in another, clean it up
-            html = html.replace(/<ul>\s*<ol>/gi, '<ol>');
-            html = html.replace(/<\/ol>\s*<\/ul>/gi, '</ol>');
-            html = html.replace(/<ol>\s*<ul>/gi, '<ul>');
-            html = html.replace(/<\/ul>\s*<\/ol>/gi, '</ul>');
-
-
-            // --- Inline elements (applied after block elements for content within them) ---
-            // Must be applied to the content of list items too if not handled by list regex
-
             // Helper to apply inline markdown to content that is not already inside HTML tags
             const applyInlineToTextNodes = (text) => {
                 let processed = text;
                 // Bold (**text** or __text__)
                 processed = processed.replace(/\*\*(.*?)\*\*|__(.*?)__/g, (match, p1, p2) => `<strong>${p1 || p2}</strong>`);
-                // Italic (*text* or _text_) - Be careful with single * due to lists
-                // Using _text_ is safer. For *text*, make sure it's not a list item start.
+                // Italic (*text* or _text_)
                 processed = processed.replace(/(?<!\*)\*([^* \n][^*]*?[^* \n])\*(?!\*)|_(.+?)_/g, (match, p1, p2) => `<em>${p1 || p2 || ''}</em>`);
                 // Strikethrough (~~text~~)
                 processed = processed.replace(/\~\~(.*?)\~\~/g, '<del>$1</del>');
@@ -1463,77 +1442,74 @@ function simpleMarkdownToHtml(markdownText) {
                 return processed;
             };
             
-            // Apply inline markdown to text not already in tags (e.g. inside <li> which was just text)
-            // This is a bit complex to do perfectly with regex. A full parser is better.
-            // For now, let's apply it broadly and clean up after.
-            // The list regex above already extracts the item text. We should apply inline there.
-            
-            // Re-do list processing with inline included
-            html = markdownText; // Reset html to original for this pass
-            html = html.replace(/^#### (.*$)/gim, '<h6>$1</h6>');
-            html = html.replace(/^### (.*$)/gim, '<h5>$1</h5>');
-            html = html.replace(/^## (.*$)/gim, '<h4>$1</h4>');
-            html = html.replace(/^# (.*$)/gim, '<h3>$1</h3>');
-            html = html.replace(/^\s*([-*_]){3,}\s*$/gm, '<hr>');
-
+            // Process lists line by line, applying inline formatting to list item content
             let listProcessedHtml = "";
             let inListType = null; // 'ul' or 'ol'
-            const lines = html.split('\n');
+            const lines = html.split('\n'); // Split original markdown by single newlines
 
             for(let i=0; i < lines.length; i++) {
                 let line = lines[i];
-                let processedLine = "";
+                let processedLineContent = ""; // Content of the line after list marker removal
                 let listMatch = line.match(/^\s*([\*\-\+])\s+(.*)/) || line.match(/^\s*(\d+)\.\s+(.*)/);
 
                 if (listMatch) {
                     const listCharOrNum = listMatch[1];
-                    const itemText = applyInlineToTextNodes(listMatch[2]);
+                    // Apply inline formatting only to the text part of the list item
+                    const itemText = applyInlineToTextNodes(listMatch[2]); 
                     const currentListType = (listCharOrNum === '*' || listCharOrNum === '-' || listCharOrNum === '+') ? 'ul' : 'ol';
 
                     if (inListType !== currentListType) {
-                        if (inListType) listProcessedHtml += `</${inListType}>\n`;
-                        listProcessedHtml += `<${currentListType}>\n`;
+                        if (inListType) listProcessedHtml += `</${inListType}>\n`; // Close previous list
+                        listProcessedHtml += `<${currentListType}>\n`; // Start new list
                         inListType = currentListType;
                     }
                     listProcessedHtml += `<li>${itemText}</li>\n`;
-                } else {
-                    if (inListType) {
+                } else { // Not a list item
+                    if (inListType) { // If we were in a list, close it
                         listProcessedHtml += `</${inListType}>\n`;
                         inListType = null;
                     }
-                    // For non-list lines, apply inline markdown and prepare for paragraph/newline handling
-                    // If it's not already a heading or hr
+                    // For non-list lines, apply inline markdown if it's not a heading or hr
                     if (!line.match(/^<h[1-6]>|^<hr>/)) {
-                         processedLine = applyInlineToTextNodes(line);
+                         processedLineContent = applyInlineToTextNodes(line);
                     } else {
-                        processedLine = line; // Already an HTML block
+                        processedLineContent = line; // Already an HTML block (heading/hr)
                     }
-                    listProcessedHtml += processedLine + "\n";
+                    listProcessedHtml += processedLineContent + "\n";
                 }
             }
-            if (inListType) { // Close any open list at the end
+            if (inListType) { // Close any open list at the end of all lines
                 listProcessedHtml += `</${inListType}>\n`;
             }
-            html = listProcessedHtml.trim();
+            html = listProcessedHtml.trim(); // This html now has lists, headings, hr, and inline elements processed.
 
+            // Paragraphs: Wrap remaining text blocks (separated by double newlines) in <p> tags.
+            // Single newlines within these blocks are converted to <br>.
+            let finalHtmlOutput = "";
+            const paragraphBlocks = html.split(/\n\s*\n+/); // Split by two or more newlines
 
-            // Paragraphs: Wrap lines that are not part of other block elements in <p>
-            // And convert single newlines (that are not for list separation) to <br>
-            // This is a simplified approach: treat blank lines as paragraph separators.
-            html = html.split(/\n\s*\n/).map(paragraph => { // Split by one or more blank lines
-                if (paragraph.trim().length === 0) return '';
-                // If paragraph is already a block element (list, heading, hr), don't wrap in <p>
-                if (paragraph.match(/^<(ul|ol|li|h[1-6]|hr)/i)) {
-                    return paragraph.replace(/\n/g, '<br>'); // Convert internal newlines to <br>
+            for (const block of paragraphBlocks) {
+                const trimmedBlock = block.trim();
+                if (trimmedBlock.length === 0) continue;
+
+                // Check if the block is already a known HTML block element (list, heading, hr)
+                if (trimmedBlock.match(/^<(ul|ol|h[1-6]|hr|li)/i)) { 
+                    finalHtmlOutput += trimmedBlock + '\n'; 
+                } else {
+                    // It's a paragraph of text. Wrap in <p>.
+                    // Convert single newlines within this paragraph block to <br>.
+                    finalHtmlOutput += `<p>${trimmedBlock.replace(/\n/g, '<br>')}</p>\n`; // MODIFIED: \n to <br>
                 }
-                return '<p>' + paragraph.replace(/\n/g, '<br>') + '</p>';
-            }).join('');
+            }
+            html = finalHtmlOutput.trim();
             
-            // Clean up: remove <p><br></p> or <p></p>
+            // Clean up: remove empty <p> tags that might result from processing
             html = html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
             // Clean up <br> tags right after block openings or before block closings
-            html = html.replace(/<(ul|ol|li|h[1-6]|p|hr)><br\s*\/?>/gi, '<$1>');
+            html = html.replace(/<(ul|ol|li|h[1-6]|p|hr)>\s*<br\s*\/?>/gi, '<$1>');
             html = html.replace(/<br\s*\/?>\s*<\/(ul|ol|li|h[1-6]|p|hr)>/gi, '</$1>');
+            // Remove <br> at the very end of a <p> tag content if it's the last thing.
+            html = html.replace(/<br\s*\/?>\s*<\/p>/gi, '</p>');
 
 
             return html;
@@ -1743,7 +1719,8 @@ function simpleMarkdownToHtml(markdownText) {
                     } else { lastUploadedFileWasImage = false; lastUploadedImageSrc = ''; }
                 } else {
                     if (selectedFileInfo) selectedFileInfo.style.display = 'none';
-                    lastUploadedFileWasImage = false; lastUploadedImageSrc = '';
+                    lastUploadedFileWasImage = false;
+                    lastUploadedImageSrc = '';
                 }
                 updateSolveButtonState();
             });
@@ -1876,12 +1853,12 @@ function simpleMarkdownToHtml(markdownText) {
                 else if (event.error === 'audio-capture') msg = 'Could not capture audio. Check microphone.';
                 showAlert(msg, 'warning'); isRecording = false;
                 startSpeechButton.classList.remove('recording'); startSpeechButton.title = 'Speak your math problem';
-                startSpeechButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-mic-fill" viewBox="0 0 16 16"><path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z"/><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3.5 8V7a.5.5 0 0 1 .5-.5"/></svg>`;
+                startSpeechButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-mic-fill" viewBox="0 0 16 16"><path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z"/><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3.5 8V7a.5.5 0 0 1 .5-.5"/>`;
                 recognition.previousInterim = ''; updateSolveButtonState();
             };
             recognition.onend = () => {
                 isRecording = false; startSpeechButton.classList.remove('recording'); startSpeechButton.title = 'Speak your math problem';
-                startSpeechButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-mic-fill" viewBox="0 0 16 16"><path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z"/><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3.5 8V7a.5.5 0 0 1 .5-.5"/></svg>`;
+                startSpeechButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-mic-fill" viewBox="0 0 16 16"><path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z"/><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3.5 8V7a.5.5 0 0 1 .5-.5"/>`;
                 recognition.previousInterim = ''; updateSolveButtonState();
             };
             startSpeechButton.addEventListener('click', () => {
@@ -1980,7 +1957,7 @@ function simpleMarkdownToHtml(markdownText) {
                 if (nextStepButton) nextStepButton.style.display = 'none';
                 const endMsg = document.getElementById('endOfSolutionMessage');
                 if(endMsg) endMsg.style.display = 'none'; // Hide end message for 'all' mode
-            } else if (mode === 'one-by-one' || (displayOneByOneRadio && displayOneByOneRadio.checked)) {
+            } else if (mode === 'one-by-one' || (displayOneByOneRadio && displayOneByOne.checked)) {
                 solutionOutput.innerHTML = currentSolutionStepsArray.slice(0, currentStepIndex + 1).join('');
                 const stepControlsDiv = document.getElementById('stepByStepControls');
                 const endMsg = document.getElementById('endOfSolutionMessage');
@@ -2056,7 +2033,7 @@ function simpleMarkdownToHtml(markdownText) {
                     try { responseData = await response.json(); } catch (e) {
                         const txt = await response.text();
                         if (!response.ok) throw new Error(`Server error (${response.status}): ${txt.substring(0,200)}`);
-                        throw new Error(`Received invalid JSON from server. Raw content: ${txt.substring(0,500)}...`);
+                        throw new Error("Received an unexpected non-JSON response from check server.");
                     }
                     if (!response.ok) throw new Error(responseData?.error || responseData?.message || `HTTP error! Status: ${response.status}`);
 
@@ -2286,7 +2263,7 @@ function simpleMarkdownToHtml(markdownText) {
                     if (msg.role === 'user') {
                         chatWindow.innerHTML += `<div class="user-message"><div>${escapeHtml(msg.content)}</div></div>`;
                     } else if (msg.role === 'bot') {
-                        let botContent = msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/`(.*?)`/g, '<code>$1</code>');
+                        let botContent = msg.content.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/`(.*?)`/g, '<code>$1</code>');
                         chatWindow.innerHTML += `<div class="bot-message"><img src="https://cdn-icons-png.flaticon.com/512/616/616408.png" alt="Owl Avatar"><div><b>Professor Owl:</b> ${botContent}</div></div>`;
                     }
                 });
