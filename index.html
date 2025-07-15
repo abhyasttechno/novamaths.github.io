@@ -911,14 +911,14 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center">
-                 
+                   
                     <li class="nav-item"><a class="nav-link" href="#features-section-anchor">Features</a></li>
                     <li class="nav-item"><a class="nav-link" href="#concepts-library-anchor">Concepts</a></li>
                     <li class="nav-item"><a class="nav-link" href="#professor-owl-anchor">Professor Owl</a></li>
                     <li class="nav-item"><a class="nav-link" href="#feedback-anchor">Feedback</a></li>
                     
-                <li class="nav-item ms-lg-3">
-   
+                    <li class="nav-item ms-lg-3">
+    <!-- NEW: Profile Icon Link -->
     <a class="nav-link" href="profile.html" title="My Profile">
         <i class="bi bi-person-circle" style="font-size: 1.8rem; color: #4755f5;"></i>
     </a>
@@ -1043,6 +1043,21 @@
                             <p id="endOfSolutionMessage" class="text-muted mt-2" style="display: none;">End of solution.</p>
                         </div>
                     </div>
+
+                                        <!-- NEW: Suggested Question Card -->
+                    <div id="suggested-question-card" class="nm-card mb-4" style="display: none;">
+                        <div class="card-header">
+                            <i class="bi bi-trophy-fill me-2"></i>Suggested Challenge
+                        </div>
+                        <div class="card-body">
+                            <div id="suggested-question-output" class="interactive-practice p-2" title="Click to solve this problem">
+                                <!-- The suggested question will be inserted here by JavaScript -->
+                                <p class="text-muted">Your suggested challenge will appear here...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Identified Concepts & Refresher Card (dashboard.html structure, content from index.html) -->
 
                     <!-- Identified Concepts & Refresher Card (dashboard.html structure, content from index.html) -->
                     <div id="concepts-refresher-card" class="nm-card mb-4" style="display: none;">
@@ -1270,6 +1285,45 @@
         </div>
     </div>
 
+        <!-- NEW: Modal for Checking the Suggested Question -->
+    <div class="modal fade" id="suggestedQuestionCheckModal" tabindex="-1" aria-labelledby="suggestedQuestionCheckModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="suggestedQuestionCheckModalLabel"><i class="bi bi-check2-square me-2"></i>Check Your Challenge Solution</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Challenge Problem:</h6>
+                    <div id="modalSuggestedQuestionContent" class="mb-3 p-3 bg-light border rounded" style="max-height: 150px; overflow-y: auto;"></div>
+                    <form id="suggestedQuestionCheckForm">
+                        <input type="hidden" id="modalSuggestedQuestionTextHidden">
+                        <div class="mb-3">
+                            <label for="suggestedSolutionFile" class="form-label">Upload Your Solution (Image/PDF):</label>
+                            <input class="form-control" type="file" id="suggestedSolutionFile" accept="image/*,application/pdf" required>
+                             <div id="suggestedSelectedFileInfo" class="form-text mt-1"></div>
+                        </div>
+                        <div id="suggestedModalAlertBox" class="mb-3"></div>
+                        <div id="suggestedCheckResult" class="mt-3" style="display: none;">
+                            <h6><i class="bi bi-clipboard2-check-fill me-2"></i>Feedback:</h6>
+                            <div id="suggestedCheckOutput" class="p-3 border rounded bg-white" style="max-height: 300px; overflow-y: auto;"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" form="suggestedQuestionCheckForm" id="submitSuggestedCheckButton" class="btn btn-success">
+                         <span class="spinner-border spinner-border-sm me-1 loading-spinner" style="display:none;" role="status" aria-hidden="true"></span>
+                         <i class="bi bi-check-lg button-icon me-1"></i>
+                         Check Solution
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle (from dashboard.html) -->
+
     <div class="modal fade" id="refresherModal" tabindex="-1" aria-labelledby="refresherModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl"> <!-- modal-xl from dashboard.html -->
             <div class="modal-content">
@@ -1333,10 +1387,24 @@
         const refresherSolvedQuestions = document.getElementById('refresherSolvedQuestions');
         const refresherLoadingSpinner = document.getElementById('refresherLoadingSpinner');
         const refresherError = document.getElementById('refresherError');
+        const suggestedQuestionCard = document.getElementById('suggested-question-card');
+        const suggestedQuestionOutput = document.getElementById('suggested-question-output');
 
+        // Suggested Question Modal Elements
+        const suggestedQuestionCheckModalElement = document.getElementById('suggestedQuestionCheckModal');
+        const suggestedQuestionCheckModal = new bootstrap.Modal(suggestedQuestionCheckModalElement);
+        const modalSuggestedQuestionContent = document.getElementById('modalSuggestedQuestionContent');
+        const suggestedQuestionCheckForm = document.getElementById('suggestedQuestionCheckForm');
+        const modalSuggestedQuestionTextHidden = document.getElementById('modalSuggestedQuestionTextHidden');
+        const suggestedSolutionFile = document.getElementById('suggestedSolutionFile');
+        const submitSuggestedCheckButton = document.getElementById('submitSuggestedCheckButton');
+        const suggestedCheckResult = document.getElementById('suggestedCheckResult');
+        const suggestedCheckOutput = document.getElementById('suggestedCheckOutput');
+        const suggestedModalAlertBox = document.getElementById('suggestedModalAlertBox');
+        const suggestedSelectedFileInfo = document.getElementById('suggestedSelectedFileInfo');
         // --- API Endpoints ---
         const API_BASE_URL = 'https://novamaths-api-edfd27612b5d.herokuapp.com';
-        // const API_BASE_URL = 'http://127.0.0.1:8080';
+        //const API_BASE_URL = 'http://127.0.0.1:8080';
         const SOLVE_API_ENDPOINT = `${API_BASE_URL}/solve-math`;
         const CLARIFY_API_ENDPOINT = `${API_BASE_URL}/clarify-step`;
         const PRACTICE_API_ENDPOINT = `${API_BASE_URL}/practice`;
@@ -1416,134 +1484,52 @@
 
 
 function simpleMarkdownToHtml(markdownText) {
-            if (!markdownText) return '';
+    if (!markdownText) return '';
 
-            let html = markdownText;
+    // 1. Protect MathJax expressions
+    const mathExpressions = [];
+    let text = markdownText.replace(/\$\$(.*?)\$\$|\$(.*?)\$/g, (match) => {
+        mathExpressions.push(match);
+        return `__MATHJAX_PLACEHOLDER_${mathExpressions.length - 1}__`;
+    });
 
-            // --- Block level elements ---
+    // 2. Process basic Markdown (headings, bold, italics, lists)
+    // Headings
+    text = text.replace(/^### (.*$)/gim, '<h5>$1</h5>');
+    text = text.replace(/^## (.*$)/gim, '<h4>$1</h4>');
+    text = text.replace(/^# (.*$)/gim, '<h3>$1</h3>');
 
-            // Headings ( musí být před paragrafy/newlines)
-            // Process from smaller heading to larger if simple replace, or ensure regex matches start of line
-            html = html.replace(/^#### (.*$)/gim, '<h6>$1</h6>');
-            html = html.replace(/^### (.*$)/gim, '<h5>$1</h5>');
-            html = html.replace(/^## (.*$)/gim, '<h4>$1</h4>');
-            html = html.replace(/^# (.*$)/gim, '<h3>$1</h3>');
+    // Bold and Italic
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Lists (basic implementation)
+    text = text.replace(/^\s*[\-\*]\s(.*)/gm, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+    text = text.replace(/<\/ul>\n<ul>/g, ''); // Fix for consecutive lists
 
-            // Horizontal Rules (---, ***, ___)
-            html = html.replace(/^\s*([-*_]){3,}\s*$/gm, '<hr>');
-
-            // Lists (simplified handling for non-nested lists)
-            // Unordered lists
-            html = html.replace(/^\s*[\*\-\+]\s+(.*)/gm, '<li>$1</li>'); // Convert items to <li>
-            html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');    // Wrap groups of <li> in <ul>
-
-            // Numbered lists
-            html = html.replace(/^\s*\d+\.\s+(.*)/gm, '<li>$1</li>');    // Convert items to <li>
-            html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ol>$&</ol>');     // Wrap groups of <li> in <ol>
-            
-            // Fix for lists: if <ul> or <ol> was accidentally wrapped in another, clean it up
-            html = html.replace(/<ul>\s*<ol>/gi, '<ol>');
-            html = html.replace(/<\/ol>\s*<\/ul>/gi, '</ol>');
-            html = html.replace(/<ol>\s*<ul>/gi, '<ul>');
-            html = html.replace(/<\/ul>\s*<\/ol>/gi, '</ul>');
-
-
-            // --- Inline elements (applied after block elements for content within them) ---
-            // Must be applied to the content of list items too if not handled by list regex
-
-            // Helper to apply inline markdown to content that is not already inside HTML tags
-            const applyInlineToTextNodes = (text) => {
-                let processed = text;
-                // Bold (**text** or __text__)
-                processed = processed.replace(/\*\*(.*?)\*\*|__(.*?)__/g, (match, p1, p2) => `<strong>${p1 || p2}</strong>`);
-                // Italic (*text* or _text_) - Be careful with single * due to lists
-                // Using _text_ is safer. For *text*, make sure it's not a list item start.
-                processed = processed.replace(/(?<!\*)\*([^* \n][^*]*?[^* \n])\*(?!\*)|_(.+?)_/g, (match, p1, p2) => `<em>${p1 || p2 || ''}</em>`);
-                // Strikethrough (~~text~~)
-                processed = processed.replace(/\~\~(.*?)\~\~/g, '<del>$1</del>');
-                // Inline code (`code`)
-                processed = processed.replace(/\`(.*?)\`/g, '<code>$1</code>');
-                return processed;
-            };
-            
-            // Apply inline markdown to text not already in tags (e.g. inside <li> which was just text)
-            // This is a bit complex to do perfectly with regex. A full parser is better.
-            // For now, let's apply it broadly and clean up after.
-            // The list regex above already extracts the item text. We should apply inline there.
-            // Let's refine the list processing slightly to include inline processing
-            
-            // Re-do list processing with inline included
-            html = markdownText; // Reset html to original for this pass
-            html = html.replace(/^#### (.*$)/gim, '<h6>$1</h6>');
-            html = html.replace(/^### (.*$)/gim, '<h5>$1</h5>');
-            html = html.replace(/^## (.*$)/gim, '<h4>$1</h4>');
-            html = html.replace(/^# (.*$)/gim, '<h3>$1</h3>');
-            html = html.replace(/^\s*([-*_]){3,}\s*$/gm, '<hr>');
-
-            let listProcessedHtml = "";
-            let inListType = null; // 'ul' or 'ol'
-            const lines = html.split('\n');
-
-            for(let i=0; i < lines.length; i++) {
-                let line = lines[i];
-                let processedLine = "";
-                let listMatch = line.match(/^\s*([\*\-\+])\s+(.*)/) || line.match(/^\s*(\d+)\.\s+(.*)/);
-
-                if (listMatch) {
-                    const listCharOrNum = listMatch[1];
-                    const itemText = applyInlineToTextNodes(listMatch[2]);
-                    const currentListType = (listCharOrNum === '*' || listCharOrNum === '-' || listCharOrNum === '+') ? 'ul' : 'ol';
-
-                    if (inListType !== currentListType) {
-                        if (inListType) listProcessedHtml += `</${inListType}>\n`;
-                        listProcessedHtml += `<${currentListType}>\n`;
-                        inListType = currentListType;
-                    }
-                    listProcessedHtml += `<li>${itemText}</li>\n`;
-                } else {
-                    if (inListType) {
-                        listProcessedHtml += `</${inListType}>\n`;
-                        inListType = null;
-                    }
-                    // For non-list lines, apply inline markdown and prepare for paragraph/newline handling
-                    // If it's not already a heading or hr
-                    if (!line.match(/^<h[1-6]>|^<hr>/)) {
-                         processedLine = applyInlineToTextNodes(line);
-                    } else {
-                        processedLine = line; // Already an HTML block
-                    }
-                    listProcessedHtml += processedLine + "\n";
-                }
-            }
-            if (inListType) { // Close any open list at the end
-                listProcessedHtml += `</${inListType}>\n`;
-            }
-            html = listProcessedHtml.trim();
-
-
-            // Paragraphs: Wrap lines that are not part of other block elements in <p>
-            // And convert single newlines (that are not for list separation) to <br>
-            // This is a simplified approach: treat blank lines as paragraph separators.
-            html = html.split(/\n\s*\n/).map(paragraph => { // Split by one or more blank lines
-                if (paragraph.trim().length === 0) return '';
-                // If paragraph is already a block element (list, heading, hr), don't wrap in <p>
-                if (paragraph.match(/^<(ul|ol|li|h[1-6]|hr)/i)) {
-                    return paragraph.replace(/\n/g, '<br>'); // Convert internal newlines to <br>
-                }
-                return '<p>' + paragraph.replace(/\n/g, '<br>') + '</p>';
-            }).join('');
-            
-            // Clean up: remove <p><br></p> or <p></p>
-            html = html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
-            // Clean up <br> tags right after block openings or before block closings
-            html = html.replace(/<(ul|ol|li|h[1-6]|p|hr)><br\s*\/?>/gi, '<$1>');
-            html = html.replace(/<br\s*\/?>\s*<\/(ul|ol|li|h[1-6]|p|hr)>/gi, '</$1>');
-
-
-            return html;
+    // 3. Handle paragraphs (wrap remaining lines in <p> tags)
+    text = text.split('\n').map(line => {
+        if (!line.trim()) return ''; // Skip empty lines
+        if (line.match(/<\/?(h[3-5]|ul|li|strong|em)/)) {
+             // If the line is already some form of HTML, leave it
+            return line;
         }
+        return `<p>${line}</p>`; // Wrap others in paragraphs
+    }).join('');
+    
+    // Clean up extra paragraphs around lists
+    text = text.replace(/<p><ul>/g, '<ul>').replace(/<\/ul><\/p>/g, '</ul>');
+    text = text.replace(/<p><(h[3-5])>/g, '<$1>').replace(/<\/(h[3-5])><\/p>/g, '</$1>');
 
 
+    // 4. Restore MathJax expressions
+    text = text.replace(/__MATHJAX_PLACEHOLDER_(\d+)__/g, (match, index) => {
+        return mathExpressions[parseInt(index, 10)];
+    });
+
+    return text;
+}
         function escapeHtml(unsafe) {
             if (typeof unsafe !== 'string') return '';
             return unsafe
@@ -1821,7 +1807,20 @@ function simpleMarkdownToHtml(markdownText) {
 
                     if (responseData.solution) {
                        displaySolution(responseData.solution, problemTextValue, responseData.identifiedConcepts, responseData.file_uri);
-                        if(mathProblemText) mathProblemText.value = '';
+                        // --- NEW: Handle the suggested question ---
+                       if (suggestedQuestionCard && suggestedQuestionOutput && responseData.suggestedQuestion) {
+                           suggestedQuestionOutput.textContent = responseData.suggestedQuestion;
+                           // Store the question text on the element for easy access
+                           suggestedQuestionOutput.dataset.questionText = responseData.suggestedQuestion;
+                           suggestedQuestionCard.style.display = 'block';
+                           renderMathJax(suggestedQuestionOutput);
+                       } else if (suggestedQuestionCard) {
+                           // Hide the card if no question was generated
+                           suggestedQuestionCard.style.display = 'none';
+                       }
+                       
+                       
+                       if(mathProblemText) mathProblemText.value = '';
                         // Clear file input, but keep lastUploadedImageSrc for displaySolution
                         if (mathProblemFile) mathProblemFile.value = ''; 
                         if (selectedFileInfo) selectedFileInfo.innerHTML = '';
@@ -2056,29 +2055,82 @@ function simpleMarkdownToHtml(markdownText) {
                     const response = await fetch(REFRESHER_API_ENDPOINT, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                     });
-                    let responseData;
-                    try { responseData = await response.json(); } catch (e) {
-                        const txt = await response.text();
-                        if (!response.ok) throw new Error(`Server error (${response.status}): ${txt.substring(0,200)}`);
-                        throw new Error(`Received invalid JSON from server. Raw content: ${txt.substring(0,500)}...`);
-                    }
+                    const responseData = await response.json();
                     if (!response.ok) throw new Error(responseData?.error || responseData?.message || `HTTP error! Status: ${response.status}`);
-
-                    if (responseData.concept_name || responseData.concept_description || responseData.example || responseData.solved_questions?.length > 0) {
-                        if(refresherModalLabel && responseData.concept_name) refresherModalLabel.innerHTML = `<i class="bi bi-book-fill me-2"></i>Quick Refresher: ${escapeHtml(responseData.concept_name)}`;
-                        if(refresherConceptDescription) refresherConceptDescription.innerHTML = responseData.concept_description ? escapeHtml(responseData.concept_description) : '<p class="text-muted">Description not available.</p>';
-                        if(refresherExample) refresherExample.innerHTML = responseData.example ? escapeHtml(responseData.example) : '<p class="text-muted">Example not available.</p>';
-                        if (responseData.solved_questions?.length > 0) {
-                            if(refresherSolvedQuestions) refresherSolvedQuestions.innerHTML = responseData.solved_questions.map((q_obj, index) =>
-                                q_obj?.question && q_obj?.solution ? `<p><strong>Problem ${index + 1}:</strong> ${escapeHtml(q_obj.question)}</p><p><strong>Solution:</strong> ${escapeHtml(q_obj.solution)}</p>${index < responseData.solved_questions.length-1 ? '<hr style="margin: 15px 0;">':''}` : ''
-                            ).join('');
-                        } else { if(refresherSolvedQuestions) refresherSolvedQuestions.innerHTML = '<p class="text-muted">Solved questions not available.</p>'; }
-                        renderMathJax(refresherConceptDescription); renderMathJax(refresherExample); renderMathJax(refresherSolvedQuestions);
-                        if(refresherContent) refresherContent.style.display = 'block'; if(refresherError) refresherError.style.display = 'none';
-                    } else {
-                        if(refresherContent) refresherContent.style.display = 'none'; if(refresherError) refresherError.style.display = 'block';
-                        if(refresherError) { refresherError.classList.remove('alert-danger'); refresherError.classList.add('alert-info'); refresherError.innerHTML = 'No specific refresher content found for these concepts.';}
+                    
+                    if(refresherModalLabel && responseData.concept_name) refresherModalLabel.innerHTML = `<i class="bi bi-book-fill me-2"></i>Quick Refresher: ${escapeHtml(responseData.concept_name)}`;
+                    
+                    // Concept Description
+                    if(refresherConceptDescription) refresherConceptDescription.innerHTML = responseData.concept_description ? simpleMarkdownToHtml(responseData.concept_description) : '<p class="text-muted">Description not available.</p>';
+                    
+                    // Example with potential diagram
+                    if(refresherExample) {
+                        refresherExample.innerHTML = ''; // Clear it first
+                        const exampleData = responseData.example;
+                        if (exampleData && exampleData.text) {
+                            const textDiv = document.createElement('div');
+                            textDiv.innerHTML = simpleMarkdownToHtml(exampleData.text);
+                            refresherExample.appendChild(textDiv);
+                        }
+                        if (exampleData && exampleData.diagram) {
+                            const diagramElement = renderDiagramFromData(exampleData.diagram);
+                            if (diagramElement) refresherExample.appendChild(diagramElement);
+                        }
+                         if (!exampleData || (!exampleData.text && !exampleData.diagram)) {
+                             refresherExample.innerHTML = '<p class="text-muted">Example not available.</p>';
+                         }
                     }
+
+                    // Solved Questions with potential diagrams
+                    if (refresherSolvedQuestions) {
+                        refresherSolvedQuestions.innerHTML = ''; // Clear it first
+                        if (responseData.solved_questions?.length > 0) {
+                            responseData.solved_questions.forEach((q_obj, index) => {
+                                // Defensive check: Only proceed if there's a question and a solution object.
+                                if (!q_obj || !q_obj.question || !q_obj.solution) return;
+
+                                const questionContainer = document.createElement('div');
+
+                                // Add Question
+                                questionContainer.innerHTML = `<p><strong>Problem ${index + 1}:</strong> ${simpleMarkdownToHtml(q_obj.question)}</p>`;
+                                
+                                // Add Solution
+                                const solutionWrapper = document.createElement('div');
+                                solutionWrapper.innerHTML = `<strong>Solution:</strong>`;
+                                const solutionData = q_obj.solution;
+
+                                if (solutionData.text) {
+                                     const solutionTextDiv = document.createElement('div');
+                                     solutionTextDiv.innerHTML = simpleMarkdownToHtml(solutionData.text);
+                                     solutionWrapper.appendChild(solutionTextDiv);
+                                }
+                                if (solutionData.diagram) {
+                                    const diagramElement = renderDiagramFromData(solutionData.diagram);
+                                    if(diagramElement) solutionWrapper.appendChild(diagramElement);
+                                }
+                                questionContainer.appendChild(solutionWrapper);
+
+                                // Add separator
+                                if (index < responseData.solved_questions.length - 1) {
+                                    const hr = document.createElement('hr');
+                                    hr.style.margin = '15px 0';
+                                    questionContainer.appendChild(hr);
+                                }
+                                refresherSolvedQuestions.appendChild(questionContainer);
+                            });
+                        } else {
+                            // This message will now correctly show if the array is empty
+                            refresherSolvedQuestions.innerHTML = '<p class="text-muted">No solved questions were provided for this concept.</p>';
+                        }
+                    }
+
+                    // CRUCIAL: Typeset the entire modal body after all new content is added
+                    if(refresherContent) {
+                        renderMathJax(refresherContent);
+                        refresherContent.style.display = 'block';
+                    }
+                    if(refresherError) refresherError.style.display = 'none';
+
                 } catch (error) {
                     console.error('Error fetching refresher content:', error);
                     if(refresherContent) refresherContent.style.display = 'none'; if(refresherError) refresherError.style.display = 'block';
@@ -2373,6 +2425,88 @@ function simpleMarkdownToHtml(markdownText) {
                  });
              });
         });
+
+
+        if (suggestedQuestionOutput) {
+            suggestedQuestionOutput.addEventListener('click', (event) => {
+                const questionText = event.currentTarget.dataset.questionText;
+                if (!questionText) {
+                    showAlert("Could not load challenge question text.", "warning", suggestedModalAlertBox);
+                    return;
+                }
+                
+                // Populate the modal
+                modalSuggestedQuestionContent.textContent = questionText;
+                modalSuggestedQuestionTextHidden.value = questionText;
+                renderMathJax(modalSuggestedQuestionContent);
+
+                // Reset the form state
+                suggestedQuestionCheckForm.reset();
+                suggestedSelectedFileInfo.textContent = '';
+                suggestedCheckResult.style.display = 'none';
+                suggestedCheckOutput.innerHTML = '';
+                clearAlert(suggestedModalAlertBox);
+
+                // Show the modal
+                suggestedQuestionCheckModal.show();
+            });
+        }
+        
+        // Listener for the file input change in the new modal
+        if (suggestedSolutionFile && suggestedSelectedFileInfo) {
+            suggestedSolutionFile.addEventListener('change', () => {
+                if (suggestedSolutionFile.files.length > 0) {
+                    suggestedSelectedFileInfo.innerHTML = `Selected: <strong>${escapeHtml(suggestedSolutionFile.files[0].name)}</strong>`;
+                } else {
+                    suggestedSelectedFileInfo.innerHTML = '';
+                }
+            });
+        }
+
+        // Listener for the form submission in the new modal
+        if (suggestedQuestionCheckForm) {
+            suggestedQuestionCheckForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                clearAlert(suggestedModalAlertBox);
+                
+                const problemText = modalSuggestedQuestionTextHidden.value;
+                const solutionFile = suggestedSolutionFile.files[0];
+
+                if (!solutionFile) {
+                    showAlert('Please upload your solution file.', 'warning', suggestedModalAlertBox);
+                    return;
+                }
+
+                showButtonLoading(submitSuggestedCheckButton, 'Checking...');
+                suggestedCheckResult.style.display = 'none';
+                suggestedCheckOutput.innerHTML = '';
+
+                const formData = new FormData();
+                // We reuse the existing /check API endpoint, so the key names must match
+                formData.append('practiceProblem', problemText); 
+                formData.append('solutionFile', solutionFile);
+
+                try {
+                    // Reuse the existing CHECK_API_ENDPOINT
+                    const response = await fetch(CHECK_API_ENDPOINT, { method: 'POST', body: formData });
+                    const responseData = await response.json();
+
+                    if (!response.ok) throw new Error(responseData?.error || `HTTP error! Status: ${response.status}`);
+                    
+                    if (responseData.check_result) {
+                        suggestedCheckOutput.innerHTML = simpleMarkdownToHtml(responseData.check_result);
+                        renderMathJax(suggestedCheckOutput);
+                        suggestedCheckResult.style.display = 'block';
+                    } else {
+                        throw new Error("Feedback was missing in the server response.");
+                    }
+                } catch (error) {
+                    showAlert(`Failed to check solution: ${error.message}`, 'danger', suggestedModalAlertBox);
+                } finally {
+                    hideButtonLoading(submitSuggestedCheckButton);
+                }
+            });
+        }
     </script>
 
 </body>
